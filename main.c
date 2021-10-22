@@ -80,10 +80,21 @@ void 	ft_strdel(char **ap)
 	}
 }
 
-int	exit_program(t_pipex *pipex, int ret)
+void	free_array(char **arr)
 {
-	// free cmd
-	return (ret);
+	int	i;
+
+	i = -1;
+	if (arr)
+		while (arr[++i])
+			ft_strdel(&(arr[i]));
+}
+
+void	exit_program(t_pipex *pipex)
+{
+	free_array(pipex->cmd);
+	if (pipex->bin)
+		ft_strdel(&pipex->bin);
 }
 
 char 	**split_protection(char to_split, char **str, t_pipex *pipex)
@@ -94,7 +105,8 @@ char 	**split_protection(char to_split, char **str, t_pipex *pipex)
 	if (!ret)
 	{
 		ft_strdel(str);
-		return (exit_program(pipex, 1));
+		exit_program(pipex);
+		return (NULL);
 	}
 	return (ret);
 }
@@ -114,16 +126,16 @@ void	parse_path(t_pipex *pipex, char *paths)
 		path = ft_strjoin(splited[i], "/");
 		pipex->bin = ft_strjoin(path, pipex->cmd[0]);
 		fprintf(stderr, "for %s bin: %s\n", splited[i], pipex->bin);
-		ft_strdel(path);
+		ft_strdel(&path);
 		path = NULL;
 		if (!access(pipex->bin, F_OK | X_OK))
 		{
-			//free splited
+			free_array(splited);
 			break ;
 		}
-		ft_strdel(pipex->bin);
+		ft_strdel(&pipex->bin);
 	}
-	// free splited
+	free_array(splited);
 }
 
 void 	get_path(char **env, t_pipex *pipex)
@@ -134,7 +146,10 @@ void 	get_path(char **env, t_pipex *pipex)
 	while (env[++i_env])
 	{
 		if (ft_strstr_index(env[i_env], "PATH=", 0))
+		{
 			parse_path(pipex, env[i_env] + 5);
+			break ;
+		}
 	}
 }
 
@@ -184,14 +199,21 @@ void 	process(t_pipex pipex, char **env, char **av)
 	}
 }
 
+void init_pipex(t_pipex *pipex, char **av)
+{
+	pipex->fd_infile = open_file(av[1], 1);
+	pipex->fd_outfile = open_file(av[4], 0);
+	pipex->bin = NULL;
+	pipex->cmd = NULL;
+}
+
 int	main (int ac, char **av, char **env)
 {
 	t_pipex	pipex;
 
 	if (ac == 5)
 	{
-		pipex.fd_infile = open_file(av[1], 1);
-		pipex.fd_outfile = open_file(av[4], 0);
+		init_pipex(&pipex, av);
 		dup2(pipex.fd_infile, 0);
 		dup2(pipex.fd_outfile, 1);
 		pipe(pipex.pipefd);
@@ -199,6 +221,7 @@ int	main (int ac, char **av, char **env)
 		process(pipex, env, av);
 		close(pipex.fd_outfile);
 		close(pipex.fd_infile);
+		exit_program(&pipex);
 	}
 	else
 		write(2, "PIPEX USAGES: INFILE CMD1 CMD2 OUTFILE.\n", 40);
