@@ -1,1 +1,0 @@
-  501 78811 77672   0  3:16   ttys000    0:00.01 ./cclaude_pipex/pipex /dev/stdin ps -ef grep cron test2
